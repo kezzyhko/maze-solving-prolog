@@ -1,6 +1,8 @@
 :- use_module(library(clpfd)).
 :- use_module(library(aggregate)).
 
+:- discontiguous(can_move/5).
+
 :- dynamic(less_moves_yet/2).
 
 
@@ -61,15 +63,47 @@
 		Y #>= 0,
 		Y #=< SIZE - 1.
 
-	can_move(X, Y, NEW_X, NEW_Y, 00) :- can_step(X, Y, NEW_X, NEW_Y,  0,  1). % up
-	can_move(X, Y, NEW_X, NEW_Y, 01) :- can_step(X, Y, NEW_X, NEW_Y,  1,  0). % right
-	can_move(X, Y, NEW_X, NEW_Y, 02) :- can_step(X, Y, NEW_X, NEW_Y,  0, -1). % down
-	can_move(X, Y, NEW_X, NEW_Y, 03) :- can_step(X, Y, NEW_X, NEW_Y, -1,  0). % left
+	% Step
 
-	can_step(X, Y, NEW_X, NEW_Y, DX, DY) :-
-		on_map(NEW_X, NEW_Y),
-		NEW_X #= X + DX,
-		NEW_Y #= Y + DY.
+		can_move(X, Y, NEW_X, NEW_Y, 00) :- can_step(X, Y, NEW_X, NEW_Y,  0,  1). % up
+		can_move(X, Y, NEW_X, NEW_Y, 01) :- can_step(X, Y, NEW_X, NEW_Y,  1,  0). % right
+		can_move(X, Y, NEW_X, NEW_Y, 02) :- can_step(X, Y, NEW_X, NEW_Y,  0, -1). % down
+		can_move(X, Y, NEW_X, NEW_Y, 03) :- can_step(X, Y, NEW_X, NEW_Y, -1,  0). % left
+
+		can_step(X, Y, NEW_X, NEW_Y, DX, DY) :-
+			on_map(NEW_X, NEW_Y),
+			NEW_X #= X + DX,
+			NEW_Y #= Y + DY.
+
+
+	% Pass
+
+		can_move(X, Y, NEW_X, NEW_Y, 04) :- can_pass(X, Y, NEW_X, NEW_Y,  0,  1). % up
+		can_move(X, Y, NEW_X, NEW_Y, 05) :- can_pass(X, Y, NEW_X, NEW_Y,  1,  1). % right-up
+		can_move(X, Y, NEW_X, NEW_Y, 06) :- can_pass(X, Y, NEW_X, NEW_Y,  1,  0). % right
+		can_move(X, Y, NEW_X, NEW_Y, 07) :- can_pass(X, Y, NEW_X, NEW_Y,  1, -1). % right-down
+		can_move(X, Y, NEW_X, NEW_Y, 08) :- can_pass(X, Y, NEW_X, NEW_Y,  0, -1). % down
+		can_move(X, Y, NEW_X, NEW_Y, 09) :- can_pass(X, Y, NEW_X, NEW_Y, -1, -1). % left-down
+		can_move(X, Y, NEW_X, NEW_Y, 10) :- can_pass(X, Y, NEW_X, NEW_Y, -1,  0). % left
+		can_move(X, Y, NEW_X, NEW_Y, 11) :- can_pass(X, Y, NEW_X, NEW_Y, -1,  1). % left-up
+
+		can_pass(X1, Y1, X2, Y2, DX, DY) :-
+			can_throw(X1, Y1, X2, Y2, DX, DY),
+			h(X2, Y2).
+
+		can_throw(X1, Y1, X2, Y2, DX, DY) :-
+			can_step(X1, Y1, X2, Y2, DX, DY).
+
+		can_throw(X1, Y1, X2, Y2, DX, DY) :-
+			on_map(X2, Y2),
+			K #> 0,
+			X2 #= X1 + K*DX,
+			Y2 #= Y1 + K*DY,
+			PRE_X2 #= X2 - DX,
+			PRE_Y2 #= Y2 - DY,
+			not(o(PRE_X2, PRE_Y2)),
+			not(h(PRE_X2, PRE_Y2)),
+			can_throw(X1, Y1, PRE_X2, PRE_Y2, DX, DY).
 
 
 
