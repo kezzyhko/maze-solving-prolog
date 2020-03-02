@@ -7,14 +7,11 @@
 
 % Constants and main
 
-	size(19).
-
 	main :-
 		retractall(less_moves_yet(_, _)),
-		%% random_search(0, 0, PATH, MOVES), !,
-		backtracking_search(0, 0, 0, PATH, MOVES),
-		write(PATH),
-		write(MOVES).
+		random_search(0, 0, PATH), !,
+		%% backtracking_search(0, 0, 0, PATH),
+		write(PATH).
 
 
 
@@ -86,36 +83,38 @@
 
 % Random search
 
-	random_search(X, Y, [], MOVES) :-
+	random_search(X, Y, MOVES, []) :-
 		t(X, Y),
-		MOVES #= 0.
+		MOVES =< 100.
 
-	random_search(X, Y, [[NEW_X, NEW_Y] | NEW_PATH], MOVES) :-
+	random_search(X, Y, MOVES, [[NEW_X, NEW_Y] | NEW_PATH]) :-
+		MOVES < 100,
 		not(t(X, Y)),
+		not(o(X, Y)),
 		MOVE_TYPE is random(4),
 		can_move(X, Y, NEW_X, NEW_Y, MOVE_TYPE),
-		random_search(NEW_X, NEW_Y, NEW_PATH, MOVES - 1).
+		random_search(NEW_X, NEW_Y, MOVES + 1, NEW_PATH).
 
 
 
 % Backtracking search
 
-	less_moves(POS, MOVES_MADE) :-
+	less_moves(POS, MOVES) :-
 		(
 			not(less_moves_yet(POS, _));
 			less_moves_yet(POS, LEAST_MOVES),
-			MOVES_MADE #< LEAST_MOVES,
+			MOVES #< LEAST_MOVES,
 			retractall(less_moves_yet(POS, _))
 		),
-		assertz(less_moves_yet(POS, MOVES_MADE)).
+		assertz(less_moves_yet(POS, MOVES)).
 
-	backtracking_search(X, Y, MOVES_MADE, [], MOVES_LEFT) :-
+	backtracking_search(X, Y, MOVES, []) :-
 		t(X, Y),
-		less_moves(touchdown, MOVES_MADE),
-		MOVES_LEFT #= 0.
+		less_moves(touchdown, MOVES).
 
-	backtracking_search(X, Y, MOVES_MADE, [[NEW_X, NEW_Y] | NEW_PATH], MOVES_LEFT) :-
+	backtracking_search(X, Y, MOVES, [[NEW_X, NEW_Y] | NEW_PATH]) :-
 		not(t(X, Y)),
-		less_moves([X, Y], MOVES_MADE),
+		not(o(X, Y)),
+		less_moves([X, Y], MOVES),
 		can_move(X, Y, NEW_X, NEW_Y, _),
-		backtracking_search(NEW_X, NEW_Y, MOVES_MADE + 1, NEW_PATH, MOVES_LEFT - 1).
+		backtracking_search(NEW_X, NEW_Y, MOVES + 1, NEW_PATH).
