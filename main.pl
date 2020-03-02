@@ -28,6 +28,11 @@
 		Y #>= 0,
 		Y #=< SIZE - 1.
 
+	can_move(X, Y, NEW_X, NEW_Y, TYPE) :- % Free move when go in cell with human
+		h(MID_X, MID_Y),
+		can_step(X, Y, MID_X, MID_Y, _, _),
+		can_move(MID_X, MID_Y, NEW_X, NEW_Y, TYPE).
+
 	% Step
 
 		can_move(X, Y, NEW_X, NEW_Y,  0) :- can_step(X, Y, NEW_X, NEW_Y,  0,  1). % up
@@ -36,10 +41,11 @@
 		can_move(X, Y, NEW_X, NEW_Y,  3) :- can_step(X, Y, NEW_X, NEW_Y, -1,  0). % left
 
 		can_step(X, Y, NEW_X, NEW_Y, DX, DY) :-
+			abs(DX) + abs(DY) #= 1,
 			on_map(NEW_X, NEW_Y),
-			not(o(NEW_X, NEW_Y)),
 			NEW_X #= X + DX,
 			NEW_Y #= Y + DY.
+
 
 	% Pass
 
@@ -57,11 +63,15 @@
 			h(X2, Y2).
 
 		can_throw(X1, Y1, X2, Y2, DX, DY) :-
+			abs(DX) #= 1,
+			abs(DY) #= 1,
 			on_map(X2, Y2),
 			X2 #= X1 + DX,
 			Y2 #= Y1 + DY.
 
 		can_throw(X1, Y1, X2, Y2, DX, DY) :-
+			abs(DX) #= 1,
+			abs(DY) #= 1,
 			on_map(X2, Y2),
 			K #> 0,
 			X2 #= X1 + K*DX,
