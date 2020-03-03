@@ -17,9 +17,9 @@
 		retractall(least_moves_yet(_, _)),
 		get_time(START_TIME),
 		(( % if path is found
-			%% random_search(0, 0, 0, PATH)	% random search
-			%% aggregate(min(MOVES, P), (backtracking_search(0, 0, 0, P), length(P, MOVES)), min(MOVES, PATH)) % dfs
-			max_path_length(itterative_deepening, MAX_MOVES), MOVES #=< MAX_MOVES, length(PATH, MOVES), retractall(least_moves_yet(_, _)), backtracking_search(0, 0, 0, PATH) % itterative deepening dfs
+			%% random_search(0, 0, 0, false, PATH)	% random search
+			%% aggregate(min(MOVES, P), (backtracking_search(0, 0, 0, false, P), length(P, MOVES)), min(MOVES, PATH)) % dfs
+			max_path_length(itterative_deepening, MAX_MOVES), MOVES #=< MAX_MOVES, length(PATH, MOVES), retractall(least_moves_yet(_, _)), backtracking_search(0, 0, 0, false, PATH) % itterative deepening dfs
 		) -> ( % then output it
 			length(PATH, MOVES),
 			writeln(MOVES),
@@ -57,46 +57,36 @@
 	move_types(10, can_pass, -1,  0). % pass left
 	move_types(11, can_pass, -1,  1). % pass left-up
 
-	can_move(X, Y, NEW_X, NEW_Y, MOVE_TYPE) :-
+	can_move(X, Y, NEW_X, NEW_Y, NO_PASS, MOVE_TYPE) :-
 		move_types(MOVE_TYPE, FUNCTION, DX, DY),
-		call(FUNCTION, X, Y, NEW_X, NEW_Y, DX, DY).
+		call(FUNCTION, X, Y, NEW_X, NEW_Y, DX, DY),
+		(NO_PASS -> FUNCTION \= can_pass; true).
 
-	can_move(X, Y, NEW_X, NEW_Y, TYPE) :- % Free move when go in cell with human
+	can_move(X, Y, NEW_X, NEW_Y, NO_PASS, TYPE) :- % Free move when go in cell with human
 		h(MID_X, MID_Y),
 		can_step(X, Y, MID_X, MID_Y, _, _),
-		can_move(MID_X, MID_Y, NEW_X, NEW_Y, TYPE).
+		can_move(MID_X, MID_Y, NEW_X, NEW_Y, NO_PASS, TYPE).
 
 	can_step(X, Y, NEW_X, NEW_Y, DX, DY) :-
-		abs(DX) + abs(DY) #= 1,
+		move_types(_, can_step, DX, DY),
 		on_map(NEW_X, NEW_Y),
 		NEW_X #= X + DX,
 		NEW_Y #= Y + DY.
 
 	can_pass(X1, Y1, X2, Y2, DX, DY) :-
-		can_throw(X1, Y1, X2, Y2, DX, DY),
+		move_types(_, can_pass, DX, DY),
+		X2 #= X1 + DX,
+		Y2 #= Y1 + DY,
 		h(X2, Y2).
 
-	can_throw(X1, Y1, X2, Y2, DX, DY) :-
-		abs(DX) #=< 1,
-		abs(DY) #=< 1,
-		abs(DX) + abs(DY) #\= 0,
-		on_map(X2, Y2),
-		X2 #= X1 + DX,
-		Y2 #= Y1 + DY.
-
-	can_throw(X1, Y1, X2, Y2, DX, DY) :-
-		abs(DX) #=< 1,
-		abs(DY) #=< 1,
-		abs(DX) + abs(DY) #\= 0,
-		on_map(X2, Y2),
-		K #> 0,
-		X2 #= X1 + K*DX,
-		Y2 #= Y1 + K*DY,
-		PRE_X2 #= X2 - DX,
-		PRE_Y2 #= Y2 - DY,
-		can_throw(X1, Y1, PRE_X2, PRE_Y2, DX, DY),
-		not(h(PRE_X2, PRE_Y2)),
-		not(o(PRE_X2, PRE_Y2)).
+	can_pass(X1, Y1, X2, Y2, DX, DY) :-
+		move_types(_, can_pass, DX, DY),
+		on_map(X1, Y1),
+		NEXT_X #= X1 + DX,
+		NEXT_Y #= Y1 + DY,
+		can_pass(NEXT_X, NEXT_Y, X2, Y2, DX, DY),
+		not(h(NEXT_X, NEXT_Y)),
+		not(o(NEXT_X, NEXT_Y)).
 	
 	on_map(X, Y) :-
 		size(SIZE),
@@ -109,19 +99,22 @@
 
 % Random search
 
-	random_search(X, Y, MOVES, []) :-
+	random_search(X, Y, MOVES, _, []) :-
 		t(X, Y),
 		max_path_length(random_search, MAX_MOVES),
 		MOVES =< MAX_MOVES.
 
-	random_search(X, Y, MOVES, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
+	random_search(X, Y, MOVES, NO_PASS, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
 		max_path_length(random_search, MAX_MOVES),
 		MOVES =< MAX_MOVES,
 		not(t(X, Y)),
 		not(o(X, Y)),
-		MOVE_TYPE is random(4),
-		can_move(X, Y, NEW_X, NEW_Y, MOVE_TYPE),
-		random_search(NEW_X, NEW_Y, MOVES + 1, NEW_PATH).
+		aggregate_all(max(ID), move_types(ID, _, _, _), MAX_TYPE),
+		MOVE_TYPE is random(MAX_TYPE+1),
+		can_move(X, Y, NEW_X, NEW_Y, NO_PASS, MOVE_TYPE),
+		move_types(MOVE_TYPE, FUNCTION, _, _),
+		NEW_NO_PASS = (FUNCTION == can_pass),
+		random_search(NEW_X, NEW_Y, MOVES + 1, NEW_NO_PASS, NEW_PATH).
 
 
 
@@ -136,13 +129,15 @@
 		),
 		assertz(least_moves_yet(POS, MOVES)).
 
-	backtracking_search(X, Y, MOVES, []) :-
+	backtracking_search(X, Y, MOVES, _, []) :-
 		t(X, Y),
 		less_moves(touchdown, MOVES).
 
-	backtracking_search(X, Y, MOVES, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
+	backtracking_search(X, Y, MOVES, NO_PASS, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
 		not(t(X, Y)),
 		not(o(X, Y)),
 		less_moves([X, Y], MOVES),
-		can_move(X, Y, NEW_X, NEW_Y, MOVE_TYPE),
-		backtracking_search(NEW_X, NEW_Y, MOVES + 1, NEW_PATH).
+		can_move(X, Y, NEW_X, NEW_Y, NO_PASS, MOVE_TYPE),
+		move_types(MOVE_TYPE, FUNCTION, _, _),
+		NEW_NO_PASS = (FUNCTION == can_pass),
+		backtracking_search(NEW_X, NEW_Y, MOVES + 1, NEW_NO_PASS, NEW_PATH).
