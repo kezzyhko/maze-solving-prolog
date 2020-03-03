@@ -1,23 +1,30 @@
 :- use_module(library(clpfd)).
+:- multifile(size/1).
+:- multifile(h/2).
+:- multifile(o/2).
+:- multifile(t/2).
 :- include(input).
-:- discontiguous(can_move/5).
-:- dynamic(less_moves_yet/2).
+:- dynamic(least_moves_yet/2).
 
 
 
 % Main
 
+	max_path_length(random_search, 100).
+	max_path_length(itterative_deepening, 15).
+
 	main :-
-		retractall(less_moves_yet(_, _)),
+		retractall(least_moves_yet(_, _)),
 		get_time(START_TIME),
-		(( % if
-			%% random_search(0, 0, 0, PATH), !
-			backtracking_search(0, 0, 0, PATH)
-		) -> ( % then
+		(( % if path is found
+			%% random_search(0, 0, 0, PATH)	% random search
+			%% aggregate(min(MOVES, P), (backtracking_search(0, 0, 0, P), length(P, MOVES)), min(MOVES, PATH)) % dfs
+			max_path_length(itterative_deepening, MAX_MOVES), MOVES #=< MAX_MOVES, length(PATH, MOVES), retractall(least_moves_yet(_, _)), backtracking_search(0, 0, 0, PATH) % itterative deepening dfs
+		) -> ( % then output it
 			length(PATH, MOVES),
 			writeln(MOVES),
 			print_path(PATH)
-		); (
+		); ( % else output error message
 			writeln("No path has been found")
 		)),
 		get_time(END_TIME),
@@ -70,15 +77,17 @@
 		h(X2, Y2).
 
 	can_throw(X1, Y1, X2, Y2, DX, DY) :-
-		abs(DX) #= 1,
-		abs(DY) #= 1,
+		abs(DX) #=< 1,
+		abs(DY) #=< 1,
+		abs(DX) + abs(DY) #\= 0,
 		on_map(X2, Y2),
 		X2 #= X1 + DX,
 		Y2 #= Y1 + DY.
 
 	can_throw(X1, Y1, X2, Y2, DX, DY) :-
-		abs(DX) #= 1,
-		abs(DY) #= 1,
+		abs(DX) #=< 1,
+		abs(DY) #=< 1,
+		abs(DX) + abs(DY) #\= 0,
 		on_map(X2, Y2),
 		K #> 0,
 		X2 #= X1 + K*DX,
@@ -102,10 +111,12 @@
 
 	random_search(X, Y, MOVES, []) :-
 		t(X, Y),
-		MOVES =< 100.
+		max_path_length(random_search, MAX_MOVES),
+		MOVES =< MAX_MOVES.
 
 	random_search(X, Y, MOVES, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
-		MOVES < 100,
+		max_path_length(random_search, MAX_MOVES),
+		MOVES =< MAX_MOVES,
 		not(t(X, Y)),
 		not(o(X, Y)),
 		MOVE_TYPE is random(4),
@@ -118,12 +129,12 @@
 
 	less_moves(POS, MOVES) :-
 		(
-			not(less_moves_yet(POS, _));
-			less_moves_yet(POS, LEAST_MOVES),
+			not(least_moves_yet(POS, _));
+			least_moves_yet(POS, LEAST_MOVES),
 			MOVES #< LEAST_MOVES,
-			retractall(less_moves_yet(POS, _))
+			retractall(least_moves_yet(POS, _))
 		),
-		assertz(less_moves_yet(POS, MOVES)).
+		assertz(least_moves_yet(POS, MOVES)).
 
 	backtracking_search(X, Y, MOVES, []) :-
 		t(X, Y),
