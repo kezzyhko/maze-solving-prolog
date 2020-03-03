@@ -9,9 +9,27 @@
 
 	main :-
 		retractall(less_moves_yet(_, _)),
-		random_search(0, 0, 0, PATH), !,
-		%% backtracking_search(0, 0, 0, PATH),
-		write(PATH).
+		get_time(START_TIME),
+		(( % if
+			%% random_search(0, 0, 0, PATH), !
+			backtracking_search(0, 0, 0, PATH)
+		) -> ( % then
+			length(PATH, MOVES),
+			writeln(MOVES),
+			print_path(PATH)
+		); (
+			writeln("No path has been found")
+		)),
+		get_time(END_TIME),
+		TIME is (END_TIME - START_TIME) * 1000,
+		format("~3f msec~n", [TIME]).
+
+	print_path([]).
+	print_path([[X, Y, TYPE] | PATH]) :-
+		move_types(TYPE, FUNCTION, _, _),
+		((FUNCTION = can_pass) -> write("P "); true),
+		writef("%w %w\n", [X, Y]),
+		print_path(PATH).
 
 
 
@@ -86,7 +104,7 @@
 		t(X, Y),
 		MOVES =< 100.
 
-	random_search(X, Y, MOVES, [[NEW_X, NEW_Y] | NEW_PATH]) :-
+	random_search(X, Y, MOVES, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
 		MOVES < 100,
 		not(t(X, Y)),
 		not(o(X, Y)),
@@ -111,9 +129,9 @@
 		t(X, Y),
 		less_moves(touchdown, MOVES).
 
-	backtracking_search(X, Y, MOVES, [[NEW_X, NEW_Y] | NEW_PATH]) :-
+	backtracking_search(X, Y, MOVES, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :-
 		not(t(X, Y)),
 		not(o(X, Y)),
 		less_moves([X, Y], MOVES),
-		can_move(X, Y, NEW_X, NEW_Y, _),
+		can_move(X, Y, NEW_X, NEW_Y, MOVE_TYPE),
 		backtracking_search(NEW_X, NEW_Y, MOVES + 1, NEW_PATH).
