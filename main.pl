@@ -15,9 +15,12 @@ max_path_length(100).
 % Main
 
 main :-
-	search_and_print(random),
-	search_and_print(dfs),
-	search_and_print(iterative_deepening_search).
+	retractall(least_moves_yet(_, _, _)),
+	retractall(visited(_, _)),
+	search_and_print(random_search),
+	search_and_print(backtracking_search),
+	search_and_print(iterative_deepening_search),
+	search_and_print(heuristic_search).
 
 
 
@@ -26,7 +29,7 @@ main :-
 search_and_print(SEARCH_METHOD) :-
 	get_time(START_TIME),
 	(( % if path is found
-		search_best(SEARCH_METHOD, PATH)
+		search(SEARCH_METHOD, PATH)
 	) -> ( false; % then output it
 		% "false;" is here to fix syntax highlighting bug
 		get_time(END_TIME),
@@ -49,24 +52,12 @@ print_path([[X, Y, TYPE] | PATH]) :-
 
 
 
-% Selecting best path from search
-
-search_best(dfs, PATH) :- % aggregating all solutions to find the best one
-	aggregate(min(MOVES_AMOUNT, P), (search(backtracking_search, P), length(P, MOVES_AMOUNT)), min(MOVES_AMOUNT, PATH)).
-
-search_best(METHOD, PATH) :- % returning just first solution for methods defined in the list
-	member(METHOD, [random_search, iterative_deepening_search]),
-	search(METHOD, PATH),
-	!.
-
-
-
 % Search methods
 
 % Most of the search methods are looking too similar,
 % so there is a general 'search' and particular
 % methods are factored out to separate rules.
-% iterative_deepening_search is an exception
+% itterative deepening is an exception
 
 search(iterative_deepening_search, RESULT_PATH) :-
 	max_path_length(MAX_MOVES_AMOUNT),
@@ -79,28 +70,30 @@ search(iterative_deepening_search, RESULT_PATH) :-
 	search(backtracking_search, RESULT_PATH).
 
 search(SEARCH_METHOD, RESULT_PATH) :- % shortcut
-	retractall(least_moves_yet(_, _, _)),
 	start(X, Y),
-	search(SEARCH_METHOD, X, Y, 0, false, RESULT_PATH).
+	search(SEARCH_METHOD, X, Y, false, [], RESULT_PATH).
 
 search(_, X, Y, _, _, []) :- % base case for search recursion
-	t(X, Y).
+	t(X, Y), !.
 
-search(SEARCH_METHOD, X, Y, MOVES_AMOUNT, NO_PASS, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :- % recursive search
-	not(t(X, Y)),
+search(SEARCH_METHOD, X, Y, NO_PASS, VISITED, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :- % recursive search
 	not(o(X, Y)),
-	call(SEARCH_METHOD, X, Y, MOVES_AMOUNT, MOVE_TYPE),
+	call(SEARCH_METHOD, X, Y, VISITED, MOVE_TYPE),
 	can_move(X, Y, NO_PASS, MOVE_TYPE, NEW_X, NEW_Y),
 	move_types(MOVE_TYPE, FUNCTION, _, _),
-	search(SEARCH_METHOD, NEW_X, NEW_Y, MOVES_AMOUNT + 1, FUNCTION == can_pass, NEW_PATH).
+	search(SEARCH_METHOD, NEW_X, NEW_Y, FUNCTION == can_pass, [[X, Y] | VISITED], NEW_PATH).
 
-random_search(_, _, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
+
+random_search(_, _, VISITED, MOVE_TYPE) :- % failing too long paths and defining random move
+	length(VISITED, MOVES_AMOUNT),
 	max_path_length(MAX_MOVES_AMOUNT),
 	MOVES_AMOUNT #< MAX_MOVES_AMOUNT,
 	aggregate_all(max(ID), move_types(ID, _, _, _), MAX_TYPE),
 	MOVE_TYPE is random(MAX_TYPE+1).
 
-backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if move is useful to optimize
+
+backtracking_search(X, Y, VISITED, _) :- % just checking if last move was useful (to optimize)
+	length(VISITED, MOVES_AMOUNT),
 	(
 		not(least_moves_yet(X, Y, _));
 		least_moves_yet(X, Y, LEAST_MOVES_AMOUNT),
@@ -108,6 +101,15 @@ backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if move is useful 
 		retractall(least_moves_yet(X, Y, _))
 	),
 	assertz(least_moves_yet(X, Y, MOVES_AMOUNT)).
+
+
+heuristic_search(X, Y, VISITED, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
+	not(member([X, Y], VISITED)),
+	setof([H, MOVE_TYPE], A^B^C^(move_types(MOVE_TYPE, A, B, C), heuristic_function(X, Y, MOVE_TYPE, H)), SORTED_MOVES), % get all moves and sort them by H
+	member([H, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
+
+heuristic_function(_, _, MOVE_TYPE, H) :- % dummy function for now
+	H is -MOVE_TYPE.
 
 
 
