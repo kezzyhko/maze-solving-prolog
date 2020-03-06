@@ -4,7 +4,6 @@
 :- multifile(h/2).
 :- multifile(o/2).
 :- multifile(t/2).
-:- include(input).
 
 :- dynamic(least_moves_yet/3).
 
@@ -12,15 +11,61 @@ max_path_length(100).
 
 
 
-% Main
+% Command line arguments parsing
 
 main :-
-	retractall(least_moves_yet(_, _, _)),
-	retractall(visited(_, _)),
-	search_and_print(random_search),
-	search_and_print(backtracking_search),
-	search_and_print(iterative_deepening_search),
-	search_and_print(heuristic_search).
+
+	% parse argv
+	AVAILABLE_METHODS = [random_search, backtracking_search, iterative_deepening_search, heuristic_search],
+	OPTS_SPEC = [
+		[
+			opt(help), type(boolean), default(false),
+			shortflags([h]), longflags([help]),
+			help(['Writes this help text. Other options are ignored when this one is used'])
+		],
+		[
+			opt(input_file), type(atom),
+			shortflags([f, i]), longflags([file, input]),
+			help(['Path to the file with input. Required'])
+		],
+		[
+			opt(method), type(atom),
+			shortflags([a]), longflags([algorithm, alg, method]),
+			help(['Method of search to use. Required. Available options:' | AVAILABLE_METHODS])
+		]
+		% Planning to implement in future:
+		%% [
+		%% 	opt(max_path_length), type(integer), default(100),
+		%% 	shortflags([m]), longflags([max, max_path_length]),
+		%% 	help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search'])
+		%% ],
+		%% [
+		%% 	opt(times), type(integer), default(1),
+		%% 	shortflags([n, t]), longflags([amount, number, times]),
+		%% 	help(['Amount of times to run the search algorithm. Will output only average time and average path length if not 1'])
+		%% ]
+	],
+	opt_arguments(OPTS_SPEC, OPTS, _),
+	member(input_file(INPUT_FILE), OPTS),
+	member(method(METHOD), OPTS),
+
+	% check argv
+	(
+		/* if */ member(help(true), OPTS) ->
+		/* then */ (opt_help(OPTS_SPEC, HELP), write(HELP), halt); % help asked
+		/* elseif */ var(INPUT_FILE) ->
+		/* then */ writeln('Input file is not specified');
+		/* elseif */ var(METHOD) ->
+		/* then */ writeln('Method of search is not specified');
+		/* elseif */ not(member(METHOD, AVAILABLE_METHODS)) ->
+		/* then */ writeln('Not valid method name');
+		/* else */ (consult(INPUT_FILE), search_and_print(METHOD), halt) % everything is correct
+	),
+
+	% if everything is correct, program will halt and the next lines will not be executed
+	writeln("Example: 'swipl -s main.pl -g main -- -f input.pl -m random_search'"),
+	writeln("Use 'swipl -s main.pl -g main -- -h' for more info"),
+	halt.
 
 
 
@@ -70,6 +115,8 @@ search(iterative_deepening_search, RESULT_PATH) :-
 	search(backtracking_search, RESULT_PATH).
 
 search(SEARCH_METHOD, RESULT_PATH) :- % shortcut
+	retractall(least_moves_yet(_, _, _)),
+	retractall(visited(_, _)),
 	start(X, Y),
 	search(SEARCH_METHOD, X, Y, false, [], RESULT_PATH).
 
