@@ -142,11 +142,11 @@ search(SEARCH_METHOD, X, Y, NO_PASS, MOVES_AMOUNT, PATH) :- % recursive search
 	search(SEARCH_METHOD, NEW_X, NEW_Y, FUNCTION == can_pass, NEW_MOVES_AMOUNT, NEW_PATH).
 
 
-random_search(_, _, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
+random_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
 	max_path_length(MAX_MOVES_AMOUNT),
 	MOVES_AMOUNT #< MAX_MOVES_AMOUNT,
-	aggregate_all(max(ID), move_types(ID, _, _, _, _), MAX_TYPE),
-	MOVE_TYPE is random(MAX_TYPE+1).
+	bagof(ID, NEW_X^NEW_Y^(can_move(X, Y, false, ID, NEW_X, NEW_Y)), IDS),
+	random_member(MOVE_TYPE, IDS).
 
 
 backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was useful (to optimize)
@@ -161,7 +161,7 @@ backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was u
 
 heuristic_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
 	backtracking_search(X, Y, MOVES_AMOUNT, MOVE_TYPE),
-	setof([H, MOVE_TYPE], A^B^C^(move_types(MOVE_TYPE, A, B, C, H)), SORTED_MOVES), % get all moves and sort them by H
+	setof([H, MOVE_TYPE], FUNCTION^DX^DY^(move_types(MOVE_TYPE, FUNCTION, DX, DY, H)), SORTED_MOVES), % get all moves and sort them by H
 	member([H, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
 
 
