@@ -90,8 +90,8 @@ search_and_print(SEARCH_METHOD) :-
 
 print_path([]).
 print_path([[X, Y, TYPE] | PATH]) :-
-	move_types(TYPE, FUNCTION, _, _),
-	((FUNCTION = can_pass) -> write("P "); true),
+	move_types(TYPE, FUNCTION, _, _, _),
+	((FUNCTION = can_pass) -> write('P '); true),
 	writef("%w %w\n", [X, Y]),
 	print_path(PATH).
 
@@ -118,29 +118,38 @@ search(SEARCH_METHOD, RESULT_PATH) :- % shortcut
 	retractall(least_moves_yet(_, _, _)),
 	retractall(visited(_, _)),
 	start(X, Y),
-	search(SEARCH_METHOD, X, Y, false, [], RESULT_PATH).
+	search(SEARCH_METHOD, X, Y, false, 0, RESULT_PATH).
 
 search(_, X, Y, _, _, []) :- % base case for search recursion
 	t(X, Y), !.
 
-search(SEARCH_METHOD, X, Y, NO_PASS, VISITED, [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH]) :- % recursive search
+search(SEARCH_METHOD, X, Y, NO_PASS, MOVES_AMOUNT, PATH) :- % recursive search
 	not(o(X, Y)),
-	call(SEARCH_METHOD, X, Y, VISITED, MOVE_TYPE),
+	call(SEARCH_METHOD, X, Y, MOVES_AMOUNT, MOVE_TYPE),
 	can_move(X, Y, NO_PASS, MOVE_TYPE, NEW_X, NEW_Y),
-	move_types(MOVE_TYPE, FUNCTION, _, _),
-	search(SEARCH_METHOD, NEW_X, NEW_Y, FUNCTION == can_pass, [[X, Y] | VISITED], NEW_PATH).
+	move_types(MOVE_TYPE, FUNCTION, _, _, _),
+	(( % if we go in cell with human
+		h(NEW_X, NEW_Y),
+		FUNCTION = can_step
+	) -> ( false; % then give free move
+		% "false;" is here to fix syntax highlighting bug
+		NEW_PATH = PATH,
+		NEW_MOVES_AMOUNT is MOVES_AMOUNT
+	); ( % else write it in the path
+		PATH = [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH],
+		NEW_MOVES_AMOUNT is MOVES_AMOUNT + 1
+	)),
+	search(SEARCH_METHOD, NEW_X, NEW_Y, FUNCTION == can_pass, NEW_MOVES_AMOUNT, NEW_PATH).
 
 
-random_search(_, _, VISITED, MOVE_TYPE) :- % failing too long paths and defining random move
-	length(VISITED, MOVES_AMOUNT),
+random_search(_, _, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
 	max_path_length(MAX_MOVES_AMOUNT),
 	MOVES_AMOUNT #< MAX_MOVES_AMOUNT,
-	aggregate_all(max(ID), move_types(ID, _, _, _), MAX_TYPE),
+	aggregate_all(max(ID), move_types(ID, _, _, _, _), MAX_TYPE),
 	MOVE_TYPE is random(MAX_TYPE+1).
 
 
-backtracking_search(X, Y, VISITED, _) :- % just checking if last move was useful (to optimize)
-	length(VISITED, MOVES_AMOUNT),
+backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was useful (to optimize)
 	(
 		not(least_moves_yet(X, Y, _));
 		least_moves_yet(X, Y, LEAST_MOVES_AMOUNT),
@@ -150,56 +159,48 @@ backtracking_search(X, Y, VISITED, _) :- % just checking if last move was useful
 	assertz(least_moves_yet(X, Y, MOVES_AMOUNT)).
 
 
-heuristic_search(X, Y, VISITED, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
-	not(member([X, Y], VISITED)),
-	setof([H, MOVE_TYPE], A^B^C^(move_types(MOVE_TYPE, A, B, C), heuristic_function(X, Y, MOVE_TYPE, H)), SORTED_MOVES), % get all moves and sort them by H
+heuristic_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
+	backtracking_search(X, Y, MOVES_AMOUNT, MOVE_TYPE),
+	setof([H, MOVE_TYPE], A^B^C^(move_types(MOVE_TYPE, A, B, C, H)), SORTED_MOVES), % get all moves and sort them by H
 	member([H, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
-
-heuristic_function(_, _, MOVE_TYPE, H) :- % dummy function for now
-	H is -MOVE_TYPE.
 
 
 
 % Possible moves
 
-%          id  function  dx  dy
-move_types( 0, can_step,  0,  1). % step up
-move_types( 1, can_step,  1,  0). % step right
-move_types( 2, can_step,  0, -1). % step down
-move_types( 3, can_step, -1,  0). % step left
-move_types( 4, can_pass,  0,  1). % pass up
-move_types( 5, can_pass,  1,  1). % pass right-up
-move_types( 6, can_pass,  1,  0). % pass right
-move_types( 7, can_pass,  1, -1). % pass right-down
-move_types( 8, can_pass,  0, -1). % pass down
-move_types( 9, can_pass, -1, -1). % pass left-down
-move_types(10, can_pass, -1,  0). % pass left
-move_types(11, can_pass, -1,  1). % pass left-up
+%          id  function  dx  dy  H
+move_types( 0, can_step,  0,  1, 3). % step up
+move_types( 1, can_step,  1,  0, 3). % step right
+move_types( 2, can_step,  0, -1, 3). % step down
+move_types( 3, can_step, -1,  0, 3). % step left
+move_types( 4, can_pass,  0,  1, 2). % pass up
+move_types( 5, can_pass,  1,  1, 1). % pass right-up
+move_types( 6, can_pass,  1,  0, 2). % pass right
+move_types( 7, can_pass,  1, -1, 1). % pass right-down
+move_types( 8, can_pass,  0, -1, 2). % pass down
+move_types( 9, can_pass, -1, -1, 1). % pass left-down
+move_types(10, can_pass, -1,  0, 2). % pass left
+move_types(11, can_pass, -1,  1, 1). % pass left-up
 
 can_move(X, Y, NO_PASS, TYPE, NEW_X, NEW_Y) :-
-	move_types(TYPE, FUNCTION, DX, DY),
+	move_types(TYPE, FUNCTION, DX, DY, _),
 	call(FUNCTION, X, Y, NEW_X, NEW_Y, DX, DY),
 	(NO_PASS -> FUNCTION \= can_pass; true).
 
-can_move(X, Y, NO_PASS, TYPE, NEW_X, NEW_Y) :- % Free move when we go in cell with human
-	can_step(X, Y, MID_X, MID_Y, _, _),
-	h(MID_X, MID_Y),
-	can_move(MID_X, MID_Y, NO_PASS, TYPE, NEW_X, NEW_Y).
-
 can_step(X, Y, NEW_X, NEW_Y, DX, DY) :-
-	move_types(_, can_step, DX, DY),
+	move_types(_, can_step, DX, DY, _),
 	on_map(NEW_X, NEW_Y),
 	NEW_X #= X + DX,
 	NEW_Y #= Y + DY.
 
 can_pass(X1, Y1, X2, Y2, DX, DY) :- % base case for check recursion
-	move_types(_, can_pass, DX, DY),
+	move_types(_, can_pass, DX, DY, _),
 	X2 #= X1 + DX,
 	Y2 #= Y1 + DY,
 	h(X2, Y2).
 
 can_pass(X1, Y1, X2, Y2, DX, DY) :- % recursive check
-	move_types(_, can_pass, DX, DY),
+	move_types(_, can_pass, DX, DY, _),
 	on_map(X1, Y1),
 	NEXT_X #= X1 + DX,
 	NEXT_Y #= Y1 + DY,
