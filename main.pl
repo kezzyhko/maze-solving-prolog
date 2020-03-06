@@ -6,14 +6,13 @@
 :- multifile(t/2).
 
 :- dynamic(least_moves_yet/3).
-
-max_path_length(100).
-
+:- dynamic(max_path_length/1).
 
 
-% Command line arguments parsing
 
-main :-
+% Main
+
+main() :- % for running from command line
 
 	% parse argv
 	AVAILABLE_METHODS = [random_search, backtracking_search, iterative_deepening_search, heuristic_search],
@@ -32,22 +31,17 @@ main :-
 			opt(method), type(atom),
 			shortflags([a]), longflags([algorithm, alg, method]),
 			help(['Method of search to use. Required. Available options:' | AVAILABLE_METHODS])
+		],
+		[
+			opt(max_path_length), type(integer), default(100),
+			shortflags([m]), longflags([max, max_path_length]),
+			help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search algorithms, otherwise ignored'])
 		]
-		% Planning to implement in future:
-		%% [
-		%% 	opt(max_path_length), type(integer), default(100),
-		%% 	shortflags([m]), longflags([max, max_path_length]),
-		%% 	help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search'])
-		%% ],
-		%% [
-		%% 	opt(times), type(integer), default(1),
-		%% 	shortflags([n, t]), longflags([amount, number, times]),
-		%% 	help(['Amount of times to run the search algorithm. Will output only average time and average path length if not 1'])
-		%% ]
 	],
 	opt_arguments(OPTS_SPEC, OPTS, _),
 	member(input_file(INPUT_FILE), OPTS),
 	member(method(METHOD), OPTS),
+	member(max_path_length(MAX_PATH_LENGTH), OPTS),
 
 	% check argv
 	(
@@ -59,13 +53,19 @@ main :-
 		/* then */ writeln('Method of search is not specified');
 		/* elseif */ not(member(METHOD, AVAILABLE_METHODS)) ->
 		/* then */ writeln('Not valid method name');
-		/* else */ (consult(INPUT_FILE), search_and_print(METHOD), halt) % everything is correct
+		/* else */ (main(MAX_PATH_LENGTH, INPUT_FILE, METHOD), halt)
 	),
 
 	% if everything is correct, program will halt and the next lines will not be executed
 	writeln("Example: 'swipl -s main.pl -g main -- -f input.pl -m random_search'"),
 	writeln("Use 'swipl -s main.pl -g main -- -h' for more info"),
 	halt.
+
+
+main(MAX_PATH_LENGTH, INPUT_FILE, METHOD) :- % for running from swipl
+	assertz(max_path_length(MAX_PATH_LENGTH)),
+	consult(INPUT_FILE),
+	search_and_print(METHOD).
 
 
 
@@ -98,11 +98,6 @@ print_path([[X, Y, TYPE] | PATH]) :-
 
 
 % Search methods
-
-% Most of the search methods are looking too similar,
-% so there is a general 'search' and particular
-% methods are factored out to separate rules.
-% itterative deepening is an exception
 
 search(iterative_deepening_search, RESULT_PATH) :-
 	max_path_length(MAX_MOVES_AMOUNT),
@@ -148,7 +143,6 @@ random_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and def
 	bagof(ID, NEW_X^NEW_Y^(can_move(X, Y, false, ID, NEW_X, NEW_Y)), IDS),
 	random_member(MOVE_TYPE, IDS).
 
-
 backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was useful (to optimize)
 	(
 		not(least_moves_yet(X, Y, _));
@@ -157,7 +151,6 @@ backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was u
 		retractall(least_moves_yet(X, Y, _))
 	),
 	assertz(least_moves_yet(X, Y, MOVES_AMOUNT)).
-
 
 heuristic_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
 	backtracking_search(X, Y, MOVES_AMOUNT, MOVE_TYPE),
