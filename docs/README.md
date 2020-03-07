@@ -3,15 +3,16 @@ An assignment one on Introduction to AI Spring 2020 (2nd year) course in Innopol
 
 
 
-## The task
+## Attached documents description
 
-* [Description of the assignment](docs/task.pdf)
+* [Description of the assignment](task.pdf)
+* [The report](report.pdf)
 
 
 
 ## General information
 
-The code is tested only on SWI-Prolog (threaded, 64 bits, version 8.1.21-198-gd129a7435).<br>
+The code is tested only on SWI-Prolog (threaded, 64 bits, version `8.1.21-198-gd129a7435`).<br>
 The code uses a `clpfd` library for convenient working with integers.
 Example of using the code:
 * For running random search on `maps/map.pl` map <br>
