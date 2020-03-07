@@ -168,18 +168,18 @@ heuristic_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of 
 % Possible moves
 
 %          id  function  dx  dy  H
-move_types( 0, can_step,  0,  1, 3). % step up
-move_types( 1, can_step,  1,  0, 3). % step right
-move_types( 2, can_step,  0, -1, 3). % step down
-move_types( 3, can_step, -1,  0, 3). % step left
-move_types( 4, can_pass,  0,  1, 2). % pass up
-move_types( 5, can_pass,  1,  1, 1). % pass right-up
-move_types( 6, can_pass,  1,  0, 2). % pass right
-move_types( 7, can_pass,  1, -1, 1). % pass right-down
-move_types( 8, can_pass,  0, -1, 2). % pass down
-move_types( 9, can_pass, -1, -1, 1). % pass left-down
-move_types(10, can_pass, -1,  0, 2). % pass left
-move_types(11, can_pass, -1,  1, 1). % pass left-up
+move_types( 1, can_pass,  0,  1, 3). % pass up
+move_types( 2, can_pass,  1,  1, 2). % pass right-up
+move_types( 3, can_pass,  1,  0, 3). % pass right
+move_types( 4, can_pass,  1, -1, 2). % pass right-down
+move_types( 5, can_pass,  0, -1, 3). % pass down
+move_types( 6, can_pass, -1, -1, 2). % pass left-down
+move_types( 7, can_pass, -1,  0, 3). % pass left
+move_types( 8, can_pass, -1,  1, 2). % pass left-up
+move_types( 9, can_step,  0,  1, 1). % step up
+move_types(10, can_step,  1,  0, 1). % step right
+move_types(11, can_step,  0, -1, 1). % step down
+move_types(12, can_step, -1,  0, 1). % step left
 
 can_move(X, Y, NO_PASS, TYPE, NEW_X, NEW_Y) :-
 	move_types(TYPE, FUNCTION, DX, DY, _),
