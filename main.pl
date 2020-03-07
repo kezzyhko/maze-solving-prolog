@@ -20,12 +20,12 @@ main() :- % for running from command line
 		[
 			opt(help), type(boolean), default(false),
 			shortflags([h]), longflags([help]),
-			help(['Writes this help text. Other options are ignored when this one is used'])
+			help(['Writes this help text. Other options are ignored when this one is used.'])
 		],
 		[
 			opt(input_file), type(atom),
-			shortflags([f, i]), longflags([file, input]),
-			help(['Path to the file with input. Required'])
+			shortflags([f, i]), longflags([file, input, map]),
+			help(['Path to the file with input map. Required.'])
 		],
 		[
 			opt(method), type(atom),
@@ -34,8 +34,8 @@ main() :- % for running from command line
 		],
 		[
 			opt(max_path_length), type(integer), default(100),
-			shortflags([m]), longflags([max, max_path_length]),
-			help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search algorithms, otherwise ignored'])
+			shortflags([m, l]), longflags([max, max_path_length]),
+			help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search algorithms, otherwise ignored.'])
 		]
 	],
 	opt_arguments(OPTS_SPEC, OPTS, _),
@@ -52,8 +52,8 @@ main() :- % for running from command line
 		/* elseif */ var(METHOD) ->
 		/* then */ writeln('Method of search is not specified');
 		/* elseif */ not(member(METHOD, AVAILABLE_METHODS)) ->
-		/* then */ writeln('Not valid method name');
-		/* else */ (main(MAX_PATH_LENGTH, INPUT_FILE, METHOD), halt)
+		/* then */ writeln('Invalid method name');
+		/* else */ (main(MAX_PATH_LENGTH, INPUT_FILE, METHOD), halt) % everything is correct
 	),
 
 	% if everything is correct, program will halt and the next lines will not be executed
@@ -111,7 +111,6 @@ search(iterative_deepening_search, RESULT_PATH) :-
 
 search(SEARCH_METHOD, RESULT_PATH) :- % shortcut
 	retractall(least_moves_yet(_, _, _)),
-	retractall(visited(_, _)),
 	start(X, Y),
 	search(SEARCH_METHOD, X, Y, false, 0, RESULT_PATH).
 
