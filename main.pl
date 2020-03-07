@@ -7,6 +7,7 @@
 :- dynamic(t/2).
 :- dynamic(least_moves_yet/3).
 :- dynamic(max_path_length/1).
+max_path_length(100). % default value
 
 
 
@@ -63,6 +64,7 @@ main() :- % for running from command line
 
 
 main(MAX_PATH_LENGTH, INPUT_FILE, METHOD) :- % for running from swipl
+	retractall(max_path_length(_)),
 	assertz(max_path_length(MAX_PATH_LENGTH)),
 	retractall(size(_)),
 	retractall(start(_, _)),
