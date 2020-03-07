@@ -126,7 +126,7 @@ search(_, X, Y, _, _, []) :- % base case for search recursion
 
 search(SEARCH_METHOD, X, Y, NO_PASS, MOVES_AMOUNT, PATH) :- % recursive search
 	not(o(X, Y)),
-	call(SEARCH_METHOD, X, Y, MOVES_AMOUNT, MOVE_TYPE),
+	call(SEARCH_METHOD, X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE),
 	can_move(X, Y, NO_PASS, MOVE_TYPE, NEW_X, NEW_Y),
 	move_types(MOVE_TYPE, FUNCTION, _, _, _),
 	(( % if we go in cell with human
@@ -140,16 +140,16 @@ search(SEARCH_METHOD, X, Y, NO_PASS, MOVES_AMOUNT, PATH) :- % recursive search
 		PATH = [[NEW_X, NEW_Y, MOVE_TYPE] | NEW_PATH],
 		NEW_MOVES_AMOUNT is MOVES_AMOUNT + 1
 	)),
-	search(SEARCH_METHOD, NEW_X, NEW_Y, FUNCTION == can_pass, NEW_MOVES_AMOUNT, NEW_PATH).
+	search(SEARCH_METHOD, NEW_X, NEW_Y, ((FUNCTION == can_pass); NO_PASS), NEW_MOVES_AMOUNT, NEW_PATH).
 
 
-random_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
+random_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE) :- % failing too long paths and defining random move
 	max_path_length(MAX_MOVES_AMOUNT),
 	MOVES_AMOUNT #< MAX_MOVES_AMOUNT,
-	bagof(ID, NEW_X^NEW_Y^(can_move(X, Y, false, ID, NEW_X, NEW_Y)), IDS),
+	bagof(ID, NEW_X^NEW_Y^NO_PASS^(can_move(X, Y, NO_PASS, ID, NEW_X, NEW_Y)), IDS),
 	random_member(MOVE_TYPE, IDS).
 
-backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was useful (to optimize)
+backtracking_search(X, Y, _, MOVES_AMOUNT, _) :- % just checking if last move was useful (to optimize)
 	(
 		not(least_moves_yet(X, Y, _));
 		least_moves_yet(X, Y, LEAST_MOVES_AMOUNT),
@@ -158,8 +158,8 @@ backtracking_search(X, Y, MOVES_AMOUNT, _) :- % just checking if last move was u
 	),
 	assertz(least_moves_yet(X, Y, MOVES_AMOUNT)).
 
-heuristic_search(X, Y, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
-	backtracking_search(X, Y, MOVES_AMOUNT, MOVE_TYPE),
+heuristic_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
+	backtracking_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE),
 	setof([H, MOVE_TYPE], FUNCTION^DX^DY^(move_types(MOVE_TYPE, FUNCTION, DX, DY, H)), SORTED_MOVES), % get all moves and sort them by H
 	member([H, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
 
