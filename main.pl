@@ -1,10 +1,10 @@
 :- use_module(library(clpfd)).
 
-:- multifile(size/1).
-:- multifile(h/2).
-:- multifile(o/2).
-:- multifile(t/2).
-
+:- dynamic(size/1).
+:- dynamic(start/2).
+:- dynamic(h/2).
+:- dynamic(o/2).
+:- dynamic(t/2).
 :- dynamic(least_moves_yet/3).
 :- dynamic(max_path_length/1).
 
@@ -64,6 +64,11 @@ main() :- % for running from command line
 
 main(MAX_PATH_LENGTH, INPUT_FILE, METHOD) :- % for running from swipl
 	assertz(max_path_length(MAX_PATH_LENGTH)),
+	retractall(size(_)),
+	retractall(start(_, _)),
+	retractall(h(_, _)),
+	retractall(o(_, _)),
+	retractall(t(_, _)),
 	consult(INPUT_FILE),
 	search_and_print(METHOD).
 
