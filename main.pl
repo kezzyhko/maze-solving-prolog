@@ -6,8 +6,14 @@
 :- dynamic(o/2).
 :- dynamic(t/2).
 :- dynamic(least_moves_yet/3).
+
+
+
+% Constants and default values
 :- dynamic(max_path_length/1).
-max_path_length(100). % default value
+max_path_length(100).
+:- dynamic(vision/1).
+vision(1).
 
 
 
@@ -37,12 +43,18 @@ main() :- % for running from command line
 			opt(max_path_length), type(integer), default(100),
 			shortflags([m, l]), longflags([max, max_path_length]),
 			help(['Max amount of moves search can make. Works only for random_search and iterative_deepening_search algorithms, otherwise ignored.'])
+		],
+		[
+			opt(vision), type(integer), default(1),
+			shortflags([v]), longflags([vision]),
+			help(['Max amount of cells agent can see. Works only for heuristic_search algorithm, otherwise ignored.'])
 		]
 	],
 	opt_arguments(OPTS_SPEC, OPTS, _),
 	member(input_file(INPUT_FILE), OPTS),
 	member(method(METHOD), OPTS),
 	member(max_path_length(MAX_PATH_LENGTH), OPTS),
+	member(vision(VISION), OPTS),
 
 	% check argv
 	(
@@ -54,7 +66,7 @@ main() :- % for running from command line
 		/* then */ writeln('Method of search is not specified');
 		/* elseif */ not(member(METHOD, AVAILABLE_METHODS)) ->
 		/* then */ writeln('Invalid method name');
-		/* else */ (main(MAX_PATH_LENGTH, INPUT_FILE, METHOD), halt) % everything is correct
+		/* else */ (main(MAX_PATH_LENGTH, VISION, INPUT_FILE, METHOD), halt) % everything is correct
 	),
 
 	% if everything is correct, program will halt and the next lines will not be executed
@@ -63,7 +75,9 @@ main() :- % for running from command line
 	halt.
 
 
-main(MAX_PATH_LENGTH, INPUT_FILE, METHOD) :- % for running from swipl
+main(MAX_PATH_LENGTH, VISION, INPUT_FILE, METHOD) :- % for running from swipl
+	retractall(vision(_)),
+	assertz(vision(VISION)),
 	retractall(max_path_length(_)),
 	assertz(max_path_length(MAX_PATH_LENGTH)),
 	retractall(size(_)),
@@ -160,10 +174,18 @@ backtracking_search(X, Y, _, MOVES_AMOUNT, _) :- % just checking if last move wa
 
 heuristic_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE) :- % defining order of traverse of moves by heuristic function
 	backtracking_search(X, Y, NO_PASS, MOVES_AMOUNT, MOVE_TYPE),
-	setof([H, MOVE_TYPE], FUNCTION^DX^DY^(move_types(MOVE_TYPE, FUNCTION, DX, DY, H)), SORTED_MOVES), % get all moves and sort them by H
-	member([H, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
-
-
+	vision(VISION),
+	setof([PRIORITY, ID], FUNCTION^DX^DY^H^NEW_X^NEW_Y^(
+		can_move(X, Y, NO_PASS, ID, NEW_X, NEW_Y),
+		(aggregate_all(min(DISTANCE), ( % get (min distance after move) to (visible now touchdown points)
+			t(T_X, T_Y),
+			abs(X - T_X) + abs(Y - T_Y) #=< VISION,
+			DISTANCE is abs(NEW_X - T_X) + abs(NEW_Y - T_Y)
+		), MIN_DISTANCE) -> true; MIN_DISTANCE is 0),
+		move_types(ID, FUNCTION, DX, DY, H),
+		PRIORITY is -MIN_DISTANCE*10 + H
+	), SORTED_MOVES), % get all moves and sort them by priority
+	member([_, MOVE_TYPE], SORTED_MOVES). % split to multiple branches
 
 % Possible moves
 
