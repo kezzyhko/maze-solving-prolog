@@ -31,8 +31,9 @@ Each input file should contain:
 * Exactly one `start/2` rule, which defines on which cell maze starts. Usually it is `start(0, 0)`
 * Any amount of `o/2` rules. Defines the unpassable wall.
 * Any amount of `t/2` rules. Defined the end points of the maze.
-* Any amount of `h/2` rules. Defines the "teleport" field. Player can teleport to them from any distance, if such a field is on the same line with player. Also works diagonally.
-However, more than one `o/2`, `h/2` and/or `t/2` can’t be at the same coordinates
+* Any amount of `h/2` rules. Defines the "teleport" field. It is possible to teleport to such a field from any distance, if it is on the same line. Works diagonally.
+
+However, more than one `o/2`, `h/2` and/or `t/2` can’t be at the same coordinates.
 
 
 
