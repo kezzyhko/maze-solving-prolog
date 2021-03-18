@@ -1,5 +1,5 @@
-# rugby-prolog
-Labirinth solving implemented in prolog. 
+# maze-solving-prolog
+Maze solving implemented in prolog. 
 
 Originally, it was an assignment one on Introduction to AI Spring course in Innopolis University (2020, 2nd year).<br>
 The original report with more information can be found [here](https://docs.google.com/document/d/1xCakI2pGhRruwe632Ot1qa0QZOMnMIx42O8RP8UW83s).
